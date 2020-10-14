@@ -1,6 +1,6 @@
 from model.resstack import ResStack
 from torch import nn
-from utils.utils import weights_init
+from utils.util import weights_init
 
 class MRF(nn.Module):
     def __init__(self, kernels, channel, dilations = [[1,1], [3,1], [5,1]]):
