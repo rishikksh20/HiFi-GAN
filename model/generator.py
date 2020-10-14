@@ -1,8 +1,3 @@
-# hu 512
-# ku [16, 16, 4, 4]
-# kr [3, 7, 11]
-# Dr [1, 3, 5]
-
 from torch import nn
 from model.mrf import MRF
  
