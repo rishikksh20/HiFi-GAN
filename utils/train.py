@@ -31,6 +31,14 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
     optim_d_mpd = torch.optim.Adam(model_d_mpd.parameters(),
                                lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
 
+    stft = TacotronSTFT(filter_length=hp.audio.filter_length,
+                        hop_length=hp.audio.hop_length,
+                        win_length=hp.audio.win_length,
+                        n_mel_channels=hp.audio.n_mel_channels,
+                        sampling_rate=hp.audio.sampling_rate,
+                        mel_fmin=hp.audio.mel_fmin,
+                        mel_fmax=hp.audio.mel_fmax)
+
     githash = get_commit_hash()
 
     init_epoch = -1
@@ -67,6 +75,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
         model_d.train()
         stft_loss = MultiResolutionSTFTLoss()
         criterion = torch.nn.MSELoss().cuda()
+        l1loss = torch.nn.L1Loss()
         sub_stft_loss = MultiResolutionSTFTLoss(hp.subband_stft_loss_params.fft_sizes,
                                                 hp.subband_stft_loss_params.hop_sizes,
                                                 hp.subband_stft_loss_params.win_lengths)
@@ -111,10 +120,25 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                         adv_loss += criterion(score_fake, torch.ones_like(score_fake))
                     adv_loss = adv_loss / len(disc_fake)  # len(disc_fake) = 3
 
+                    # MPD Adverserial loss
+                    out1, out2, out3, out4, out5 = model_d_mpd(fake_audio)
+                    adv_mpd_loss = criterion(out1, torch.ones_like(out1)) + criterion(out2, torch.ones_like(out2)) + \
+                                        criterion(out3, torch.ones_like(out3)) + criterion(out4, torch.ones_like(out4)) + \
+                                        criterion(out5, torch.ones_like(out5))
+                    adv_mpd_loss = adv_mpd_loss / 5
+                    adv_loss = adv_loss + adv_mpd_loss
+
+                    # Mel Loss
+                    mel_fake = stft.mel_spectrogram(fake_audio)
+                    loss_mel = l1loss(melG, mel_fake)
+                    loss_g = 45 * loss_mel
+
                     if hp.model.feat_loss:
                         for (feats_fake, score_fake), (feats_real, _) in zip(disc_fake, disc_real):
                             for feat_f, feat_r in zip(feats_fake, feats_real):
                                 adv_loss += hp.model.feat_match * torch.mean(torch.abs(feat_f - feat_r))
+
+                    
 
                     loss_g += hp.model.lambda_adv * adv_loss
 
