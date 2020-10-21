@@ -167,6 +167,22 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                         loss_d.backward()
                         optim_d.step()
                         loss_d_sum += loss_d
+
+                        # MPD Adverserial loss
+                        out1, out2, out3, out4, out5 = model_d_mpd(fake_audio)
+                        out1_real, out2_real, out3_real, out4_real, out5_real = model_d_mpd(audioD)
+                        loss_mpd_fake = criterion(out1, torch.zeros_like(out1)) + criterion(out2, torch.zeros_like(out2)) + \
+                                            criterion(out3, torch.zeros_like(out3)) + criterion(out4, torch.zeros_like(out4)) + \
+                                            criterion(out5, torch.zeros_like(out5))
+                        loss_mpd_real = criterion(out1_real, torch.ones_like(out1_real)) + criterion(out2_real, torch.ones_like(out2_real)) + \
+                                            criterion(out3_real, torch.ones_like(out3_real)) + criterion(out4_real, torch.ones_like(out4_real)) + \
+                                            criterion(out5_real, torch.ones_like(out5_real))
+                        loss_mpd = (loss_mpd_fake + loss_mpd_real)/5
+                        loss_mpd.backward()
+                        optim_d_mpd.step()
+                        loss_d_sum += loss_mpd
+
+
                     loss_d_avg = loss_d_sum / hp.train.rep_discriminator
                     loss_d_avg = loss_d_avg.item()
 
