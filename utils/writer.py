@@ -16,15 +16,18 @@ class MyWriter(SummaryWriter):
                             mel_fmax=hp.audio.mel_fmax)
         self.is_first = True
 
-    def log_training(self, g_loss, d_loss, adv_loss, step):
-        self.add_scalar('train.g_loss', g_loss, step)
-        self.add_scalar('train.d_loss', d_loss, step)
-        self.add_scalar('train.adv_loss', adv_loss, step)
+    def log_training(self, g_loss, d_loss, adv_loss, loss_mel, step):
+        self.add_scalar('train/g_loss', g_loss, step)
+        self.add_scalar('train/d_loss', d_loss, step)
+        self.add_scalar('train/adv_loss', adv_loss, step)
+        self.add_scalar('train/loss_mel', loss_mel, step)
 
-    def log_validation(self, g_loss, d_loss, adv_loss, generator, discriminator, target, prediction, step):
-        self.add_scalar('validation.g_loss', g_loss, step)
-        self.add_scalar('validation.d_loss', d_loss, step)
-        self.add_scalar('validation.adv_loss', adv_loss, step)
+    def log_validation(self, g_loss, d_loss, adv_loss, loss_mel, loss_mpd, generator, discriminator, target, prediction, step):
+        self.add_scalar('validation/g_loss', g_loss, step)
+        self.add_scalar('validation/d_loss', d_loss, step)
+        self.add_scalar('validation/adv_loss', adv_loss, step)
+        self.add_scalar('validation/loss_mel', loss_mel, step)
+        self.add_scalar('validation/loss_mpd', loss_mpd, step)
         self.add_audio('raw_audio_predicted', prediction, step, self.sample_rate)
         self.add_image('waveform_predicted', plot_waveform_to_numpy(prediction), step)
         wav = torch.from_numpy(prediction).unsqueeze(0)

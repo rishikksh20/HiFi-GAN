@@ -4,11 +4,10 @@ import torch.nn.functional as F
 
 class PeriodDiscriminator(nn.Module):
 
-    def __init__(self, period, segment_length=16000):
+    def __init__(self, period):
         super(PeriodDiscriminator, self).__init__()
         layer = []
         self.period = period
-        self.pad = segment_length % period
         inp = 1
         for l in range(4):
             out = int(2 ** (5 + l + 1))
@@ -26,7 +25,8 @@ class PeriodDiscriminator(nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        x = F.pad(x, (0, self.period - self.pad))
+        pad = self.period - (x.shape[-1] % self.period)
+        x = F.pad(x, (0, pad))
         y = x.view(batch_size, -1, self.period).contiguous()
         y = y.unsqueeze(1)
         out1 = self.layer(y)

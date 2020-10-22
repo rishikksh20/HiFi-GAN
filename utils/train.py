@@ -4,6 +4,7 @@ import tqdm
 import torch
 import itertools
 import traceback
+from utils.validation import  validate
 from model.generator import Generator
 from model.multiscale import MultiScaleDiscriminator
 from model.mpd import MPD
@@ -80,10 +81,10 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
 
 
         for epoch in itertools.count(init_epoch + 1):
-            # if epoch % hp.log.validation_interval == 0:
-            #     with torch.no_grad():
-            #         validate(hp, args, model_g, model_d, valloader, stft_loss, sub_stft_loss, criterion, l1loss, writer,
-            #                  step)
+            if epoch % hp.log.validation_interval == 0:
+                with torch.no_grad():
+                    validate(hp, model_g, model_d, model_d_mpd, valloader, stft_loss, l1loss, criterion, stft, writer,
+                             step)
 
             trainloader.dataset.shuffle_mapping()
             loader = tqdm.tqdm(trainloader, desc='Loading train data')
@@ -105,9 +106,10 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
 
 
                 sc_loss, mag_loss = stft_loss(fake_audio[:, :, :audioG.size(2)].squeeze(1), audioG.squeeze(1))
-                loss_g = sc_loss + mag_loss
+                loss_g += sc_loss + mag_loss # STFT Loss
 
                 adv_loss = 0.0
+                loss_mel = 0.0
                 if step > hp.train.discriminator_train_start_steps:
                     disc_real = model_d(audioG)
                     disc_fake = model_d(fake_audio)
@@ -124,12 +126,12 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                                         criterion(out3, torch.ones_like(out3)) + criterion(out4, torch.ones_like(out4)) + \
                                         criterion(out5, torch.ones_like(out5))
                     adv_mpd_loss = adv_mpd_loss / 5
-                    adv_loss = adv_loss + adv_mpd_loss
+                    adv_loss = adv_loss + adv_mpd_loss # Adv Loss
 
                     # Mel Loss
                     mel_fake = stft.mel_spectrogram(fake_audio.squeeze(1))
-                    loss_mel = l1loss(melG[:, :, :mel_fake.size(2)], mel_fake.cuda())
-                    loss_g = 45 * loss_mel
+                    loss_mel += l1loss(melG[:, :, :mel_fake.size(2)], mel_fake.cuda()) # Mel L1 loss
+                    loss_g += hp.model.lambda_mel * loss_mel
 
                     if hp.model.feat_loss:
                         for (feats_fake, score_fake), (feats_real, _) in zip(disc_fake, disc_real):
@@ -161,7 +163,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                             loss_d_fake += criterion(score_fake, torch.zeros_like(score_fake))
                         loss_d_real = loss_d_real / len(disc_real)  # len(disc_real) = 3
                         loss_d_fake = loss_d_fake / len(disc_fake)  # len(disc_fake) = 3
-                        loss_d = loss_d_real + loss_d_fake
+                        loss_d += loss_d_real + loss_d_fake # MSD loss
                         loss_d.backward()
                         optim_d.step()
                         loss_d_sum += loss_d
@@ -175,7 +177,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                         loss_mpd_real = criterion(out1_real, torch.ones_like(out1_real)) + criterion(out2_real, torch.ones_like(out2_real)) + \
                                             criterion(out3_real, torch.ones_like(out3_real)) + criterion(out4_real, torch.ones_like(out4_real)) + \
                                             criterion(out5_real, torch.ones_like(out5_real))
-                        loss_mpd = (loss_mpd_fake + loss_mpd_real)/5
+                        loss_mpd = (loss_mpd_fake + loss_mpd_real)/5 # MPD Loss
                         loss_mpd.backward()
                         optim_d_mpd.step()
                         loss_d_sum += loss_mpd
@@ -196,7 +198,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                     raise Exception("Loss exploded")
 
                 if step % hp.log.summary_interval == 0:
-                    writer.log_training(loss_g, loss_d_avg, adv_loss, step)
+                    writer.log_training(loss_g, loss_d_avg, adv_loss, loss_mel, step)
                     loader.set_description(
                         "Avg : g %.04f d %.04f ad %.04f| step %d" % (sum(avg_g_loss) / len(avg_g_loss),
                                                                      sum(avg_d_loss) / len(avg_d_loss),

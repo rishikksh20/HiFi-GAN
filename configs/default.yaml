@@ -8,7 +8,7 @@ train:
   rep_discriminator: 1
   discriminator_train_start_steps: 100000
   num_workers: 4
-  batch_size: 8
+  batch_size: 16
   optimizer: 'adam'
   adam:
     lr: 0.0001
@@ -29,6 +29,7 @@ audio:
 model:
   feat_match: 10.0
   lambda_adv: 1
+  lambda_mel: 45
   use_subband_stft_loss: False
   feat_loss: False
   out_channels: 1
@@ -54,7 +55,7 @@ subband_stft_loss_params:
 ---
 log:
   summary_interval: 1
-  validation_interval: 5
+  validation_interval: 1
   save_interval: 20
   chkpt_dir: 'chkpt'
   log_dir: 'logs'
