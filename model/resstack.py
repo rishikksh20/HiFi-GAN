@@ -21,9 +21,7 @@ class ResStack(nn.Module):
 
     def forward(self, x):
       x1 = self.shortcut(x)
-      print(x1.shape)
       x2 = self.resstack(x)
-      print(x2.shape)
       return  x1 + x2
 
     def remove_weight_norm(self):

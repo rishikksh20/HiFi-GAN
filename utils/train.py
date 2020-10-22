@@ -23,7 +23,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
     model_g = Generator(hp.audio.n_mel_channels).cuda()
     model_d = MultiScaleDiscriminator(hp.model.num_D, hp.model.ndf, hp.model.n_layers,
                                       hp.model.downsampling_factor, hp.model.disc_out).cuda()
-    model_d_mpd = MPD()
+    model_d_mpd = MPD().cuda()
 
     optim_g = torch.optim.Adam(model_g.parameters(),
                                lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
@@ -77,15 +77,12 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
         stft_loss = MultiResolutionSTFTLoss()
         criterion = torch.nn.MSELoss().cuda()
         l1loss = torch.nn.L1Loss()
-        sub_stft_loss = MultiResolutionSTFTLoss(hp.subband_stft_loss_params.fft_sizes,
-                                                hp.subband_stft_loss_params.hop_sizes,
-                                                hp.subband_stft_loss_params.win_lengths)
 
 
         for epoch in itertools.count(init_epoch + 1):
             # if epoch % hp.log.validation_interval == 0:
             #     with torch.no_grad():
-            #         validate(hp, args, model_g, model_d, valloader, stft_loss, sub_stft_loss, criterion, pqmf, writer,
+            #         validate(hp, args, model_g, model_d, valloader, stft_loss, sub_stft_loss, criterion, l1loss, writer,
             #                  step)
 
             trainloader.dataset.shuffle_mapping()
@@ -130,8 +127,8 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                     adv_loss = adv_loss + adv_mpd_loss
 
                     # Mel Loss
-                    mel_fake = stft.mel_spectrogram(fake_audio)
-                    loss_mel = l1loss(melG, mel_fake)
+                    mel_fake = stft.mel_spectrogram(fake_audio.squeeze(1))
+                    loss_mel = l1loss(melG[:, :, :mel_fake.size(2)], mel_fake.cuda())
                     loss_g = 45 * loss_mel
 
                     if hp.model.feat_loss:
