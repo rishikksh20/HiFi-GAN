@@ -10,6 +10,7 @@ from model.mpd import MPD
 from .utils import get_commit_hash
 from utils.stft_loss import MultiResolutionSTFTLoss
 import numpy as np
+from utils.stft import TacotronSTFT
 
 
 def num_params(model, print_out=True):
@@ -138,7 +139,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                             for feat_f, feat_r in zip(feats_fake, feats_real):
                                 adv_loss += hp.model.feat_match * torch.mean(torch.abs(feat_f - feat_r))
 
-                    
+
 
                     loss_g += hp.model.lambda_adv * adv_loss
 
@@ -224,4 +225,3 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
     except Exception as e:
         logger.info("Exiting due to exception: %s" % e)
         traceback.print_exc()
-
