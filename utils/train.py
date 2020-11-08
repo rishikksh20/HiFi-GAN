@@ -28,10 +28,9 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
 
     optim_g = torch.optim.Adam(model_g.parameters(),
                                lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
-    optim_d = torch.optim.Adam(model_d.parameters(),
+    optim_d = torch.optim.Adam(itertools.chain(model_d.parameters(), model_d_mpd.parameters()),
                                lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
-    optim_d_mpd = torch.optim.Adam(model_d_mpd.parameters(),
-                               lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
+   
 
     stft = TacotronSTFT(filter_length=hp.audio.filter_length,
                         hop_length=hp.audio.hop_length,
@@ -54,7 +53,6 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
         model_d_mpd.load_state_dict(checkpoint['model_d_mpd'])
         optim_g.load_state_dict(checkpoint['optim_g'])
         optim_d.load_state_dict(checkpoint['optim_d'])
-        optim_d_mpd.load_state_dict(checkpoint['optim_d_mpd'])
         step = checkpoint['step']
         init_epoch = checkpoint['epoch']
 
@@ -164,8 +162,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                         loss_d_real = loss_d_real / len(disc_real)  # len(disc_real) = 3
                         loss_d_fake = loss_d_fake / len(disc_fake)  # len(disc_fake) = 3
                         loss_d += loss_d_real + loss_d_fake # MSD loss
-                        loss_d.backward()
-                        optim_d.step()
+                   
                         loss_d_sum += loss_d
 
                         # MPD Adverserial loss
@@ -178,8 +175,9 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                                             criterion(out3_real, torch.ones_like(out3_real)) + criterion(out4_real, torch.ones_like(out4_real)) + \
                                             criterion(out5_real, torch.ones_like(out5_real))
                         loss_mpd = (loss_mpd_fake + loss_mpd_real)/5 # MPD Loss
-                        loss_mpd.backward()
-                        optim_d_mpd.step()
+                        loss_d += loss_mpd
+                        loss_d.backward()
+                        optim_d.step()
                         loss_d_sum += loss_mpd
 
 
@@ -213,7 +211,6 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                     'model_d_mpd': model_d_mpd.state_dict(),
                     'optim_g': optim_g.state_dict(),
                     'optim_d': optim_d.state_dict(),
-                    'optim_d_mpd': optim_d_mpd.state_dict(),
                     'step': step,
                     'epoch': epoch,
                     'hp_str': hp_str,
