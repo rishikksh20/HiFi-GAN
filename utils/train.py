@@ -26,9 +26,9 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                                       hp.model.downsampling_factor, hp.model.disc_out).cuda()
     model_d_mpd = MPD().cuda()
 
-    optim_g = torch.optim.Adam(model_g.parameters(),
+    optim_g = torch.optim.AdamW(model_g.parameters(),
                                lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
-    optim_d = torch.optim.Adam(itertools.chain(model_d.parameters(), model_d_mpd.parameters()),
+    optim_d = torch.optim.AdamW(itertools.chain(model_d.parameters(), model_d_mpd.parameters()),
                                lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
    
 
