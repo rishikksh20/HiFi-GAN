@@ -69,6 +69,8 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
     # this accelerates training when the size of minibatch is always consistent.
     # if not consistent, it'll horribly slow down.
     torch.backends.cudnn.benchmark = True
+    scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=hp.train.adam.lr_decay, last_epoch=init_epoch)
+    scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=hp.train.adam.lr_decay, last_epoch=init_epoch)
 
     try:
         model_g.train()
@@ -217,6 +219,9 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                     'githash': githash,
                 }, save_path)
                 logger.info("Saved checkpoint to: %s" % save_path)
+
+            scheduler_g.step()
+            scheduler_d.step()
 
     except Exception as e:
         logger.info("Exiting due to exception: %s" % e)
