@@ -26,7 +26,7 @@ class PeriodDiscriminator(nn.Module):
     def forward(self, x):
         batch_size = x.shape[0]
         pad = self.period - (x.shape[-1] % self.period)
-        x = F.pad(x, (0, pad))
+        x = F.pad(x, (0, pad), "reflect")
         y = x.view(batch_size, -1, self.period).contiguous()
         y = y.unsqueeze(1)
         out1 = self.layer(y)
