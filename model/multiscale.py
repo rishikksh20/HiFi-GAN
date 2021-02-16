@@ -18,11 +18,14 @@ class MultiScaleDiscriminator(nn.Module):
         self.apply(weights_init)
 
     def forward(self, x):
-        results = []
+        scores = list()
+        feats = list()
         for key, disc in self.model.items():
-            results.append(disc(x))
+            score, feat = disc(x)
+            scores.append(score)
+            feats.append(feat)
             x = self.downsample(x)
-        return results
+        return scores, feats
 
 
 if __name__ == '__main__':

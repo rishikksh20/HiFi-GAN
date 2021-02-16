@@ -50,7 +50,7 @@ class Discriminator(nn.Module):
         for key, module in self.discriminator.items():
             x = module(x)
             features.append(x)
-        return features[:-1], features[-1]
+        return features[-1], features[:-1]
 
 
 if __name__ == '__main__':

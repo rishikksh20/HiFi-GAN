@@ -111,21 +111,23 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                 adv_loss = 0.0
                 loss_mel = 0.0
                 if step > hp.train.discriminator_train_start_steps:
+
+                    # for multi-scale discriminator
                     disc_real = model_d(audioG)
                     disc_fake = model_d(fake_audio)
-                    # for multi-scale discriminator
 
-                    for feats_fake, score_fake in disc_fake:
+                    for score_fake, feats_fake in disc_fake:
                         # adv_loss += torch.mean(torch.sum(torch.pow(score_fake - 1.0, 2), dim=[1, 2]))
                         adv_loss += criterion(score_fake, torch.ones_like(score_fake))
                     adv_loss = adv_loss / len(disc_fake)  # len(disc_fake) = 3
 
                     # MPD Adverserial loss
-                    out1, out2, out3, out4, out5 = model_d_mpd(fake_audio)
-                    adv_mpd_loss = criterion(out1, torch.ones_like(out1)) + criterion(out2, torch.ones_like(out2)) + \
-                                        criterion(out3, torch.ones_like(out3)) + criterion(out4, torch.ones_like(out4)) + \
-                                        criterion(out5, torch.ones_like(out5))
-                    adv_mpd_loss = adv_mpd_loss / 5
+                    mpd_real = model_d_mpd(audioG)
+                    mpd_fake = model_d_mpd(fake_audio)
+                    
+                    for score_fake, feats_fake in mpd_fake:
+                        adv_mpd_loss = criterion(score_fake, torch.ones_like(score_fake))
+                    adv_mpd_loss = adv_mpd_loss / len(mpd_fake)
                     adv_loss = adv_loss + adv_mpd_loss # Adv Loss
 
                     # Mel Loss
@@ -134,9 +136,14 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                     loss_g += hp.model.lambda_mel * loss_mel
 
                     if hp.model.feat_loss:
-                        for (feats_fake, score_fake), (feats_real, _) in zip(disc_fake, disc_real):
+                        for (_, feats_fake), (_, feats_real) in zip(disc_fake, disc_real):
                             for feat_f, feat_r in zip(feats_fake, feats_real):
                                 adv_loss += hp.model.feat_match * torch.mean(torch.abs(feat_f - feat_r))
+
+                        for (_, feats_fake), (_, feats_real) in zip(mpd_fake, mpd_real):
+                            for feat_f, feat_r in zip(feats_fake, feats_real):
+                                adv_loss += hp.model.feat_match * torch.mean(torch.abs(feat_f - feat_r))
+
 
 
 
@@ -156,28 +163,25 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                         disc_fake = model_d(fake_audio)
                         disc_real = model_d(audioD)
                         loss_d = 0.0
-                        loss_d_real = 0.0
-                        loss_d_fake = 0.0
-                        for (_, score_fake), (_, score_real) in zip(disc_fake, disc_real):
-                            loss_d_real += criterion(score_real, torch.ones_like(score_real))
-                            loss_d_fake += criterion(score_fake, torch.zeros_like(score_fake))
+
+                        # MSD
+                        for (score_fake, _), (score_real, _) in zip(disc_fake, disc_real):
+                            loss_d_real = criterion(score_real, torch.ones_like(score_real))
+                            loss_d_fake = criterion(score_fake, torch.zeros_like(score_fake))
                         loss_d_real = loss_d_real / len(disc_real)  # len(disc_real) = 3
                         loss_d_fake = loss_d_fake / len(disc_fake)  # len(disc_fake) = 3
                         loss_d += loss_d_real + loss_d_fake # MSD loss
-                   
                         loss_d_sum += loss_d
 
                         # MPD Adverserial loss
-                        out1, out2, out3, out4, out5 = model_d_mpd(fake_audio)
-                        out1_real, out2_real, out3_real, out4_real, out5_real = model_d_mpd(audioD)
-                        loss_mpd_fake = criterion(out1, torch.zeros_like(out1)) + criterion(out2, torch.zeros_like(out2)) + \
-                                            criterion(out3, torch.zeros_like(out3)) + criterion(out4, torch.zeros_like(out4)) + \
-                                            criterion(out5, torch.zeros_like(out5))
-                        loss_mpd_real = criterion(out1_real, torch.ones_like(out1_real)) + criterion(out2_real, torch.ones_like(out2_real)) + \
-                                            criterion(out3_real, torch.ones_like(out3_real)) + criterion(out4_real, torch.ones_like(out4_real)) + \
-                                            criterion(out5_real, torch.ones_like(out5_real))
-                        loss_mpd = (loss_mpd_fake + loss_mpd_real)/5 # MPD Loss
+                        mpd_fake = model_d_mpd(fake_audio)
+                        mpd_real = model_d_mpd(audioD)
+                        for (score_fake, _), (score_real, _) in zip(mpd_fake, mpd_real):
+                            loss_mpd_real = criterion(score_real, torch.ones_like(score_real))
+                            loss_mpd_fake = criterion(score_fake, torch.zeros_like(score_fake))
+                        loss_mpd = (loss_mpd_fake + loss_mpd_real)/len(mpd_real) # MPD Loss
                         loss_d += loss_mpd
+
                         loss_d.backward()
                         optim_d.step()
                         loss_d_sum += loss_mpd
