@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 from model.mrf import MRF
  
@@ -17,7 +18,7 @@ class Generator(nn.Module):
             out = int(inp/2)
             generator += [
                 nn.LeakyReLU(0.2),
-                nn.ConvTranspose1d(inp, out, k, k//2),
+                nn.utils.weight_norm(nn.ConvTranspose1d(inp, out, k, k//2)),
                 MRF(kr, out, Dr)
             ]
             hu = out
@@ -36,6 +37,61 @@ class Generator(nn.Module):
         x2 = self.generator(x1)
         out = self.output(x2)
         return out
+
+    def eval(self, inference=False):
+        super(Generator, self).eval()
+
+        # don't remove weight norm while validation in training loop
+        if inference:
+            self.remove_weight_norm()
+
+    # def remove_weight_norm(self):
+    #     for idx, layer in enumerate(self.generator):
+    #         if len(layer.state_dict()) != 0:
+    #             try:
+    #                 nn.utils.remove_weight_norm(layer)
+    #             except:
+    #                 layer.remove_weight_norm()
+
+    def remove_weight_norm(self):
+        for idx, layer in enumerate(self.input):
+            if len(layer.state_dict()) != 0:
+                try:
+                    nn.utils.remove_weight_norm(layer)
+                except:
+                    layer.remove_weight_norm()
+
+        for idx, layer in enumerate(self.output):
+            if len(layer.state_dict()) != 0:
+                try:
+                    nn.utils.remove_weight_norm(layer)
+                except:
+                    layer.remove_weight_norm()
+        for idx, layer in enumerate(self.generator):
+            if len(layer.state_dict()) != 0:
+                try:
+                    nn.utils.remove_weight_norm(layer)
+                except:
+                    layer.remove_weight_norm()
+
+    def apply_weight_norm(self):
+        """Apply weight normalization module from all of the layers."""
+
+        def _apply_weight_norm(m):
+            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+                torch.nn.utils.weight_norm(m)
+
+        self.apply(_apply_weight_norm)
+
+    def inference(self, mel):
+        hop_length = 256
+        # pad input mel with zeros to cut artifact
+        # see https://github.com/seungwonpark/melgan/issues/8
+        zero = torch.full((1, self.mel_channel, 10), -11.5129).to(mel.device)
+        mel = torch.cat((mel, zero), dim=2)
+
+        audio = self.forward(mel)
+        return audio
 
 
 '''
