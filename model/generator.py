@@ -1,7 +1,46 @@
 import torch
 from torch import nn
 from model.mrf import MRF
+
+'''
+class Generator(nn.Module):
+
+def __init__(self, input_channel=80, hu=512, ku=[16, 16, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5]):
+    super(Generator, self).__init__()
+    generator = []
+    generator += [
+        nn.ReflectionPad1d(3),
+        nn.utils.weight_norm(nn.Conv1d(input_channel, hu, kernel_size=7))
+    ]
+
+    
+    
+    for k in ku:
+        inp = hu
+        out = int(inp/2)
+        generator += [
+            nn.LeakyReLU(0.2),
+            nn.ConvTranspose1d(inp, out, k, k//2),
+            MRF(kr, out, Dr)
+        ]
+        hu = out
+
+    generator += [
+        nn.LeakyReLU(0.2),
+        nn.ReflectionPad1d(3),
+        nn.utils.weight_norm(nn.Conv1d(hu, 1, kernel_size=7, stride=1)),
+        nn.Tanh()
+    ]
+    self.generator = nn.Sequential(*generator)
+
+    
+
+def forward(self, x):
+    x = self.generator(x)
+    return x
  
+'''
+
 class Generator(nn.Module):
     
     def __init__(self, input_channel=80, hu=512, ku=[16, 16, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5]):
