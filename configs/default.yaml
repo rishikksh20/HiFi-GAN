@@ -6,9 +6,9 @@ data: # root path of train/validation data (either relative/absoulte path is ok)
 ---
 train:
   rep_discriminator: 1
-  discriminator_train_start_steps: 100000
+  discriminator_train_start_steps: 1
   num_workers: 4
-  batch_size: 8
+  batch_size: 16
   optimizer: 'adam'
   adam:
     lr: 0.0002
@@ -32,7 +32,7 @@ model:
   lambda_adv: 1
   lambda_mel: 45
   use_subband_stft_loss: False
-  feat_loss: False
+  feat_loss: True
   out_channels: 1
   generator_ratio: [4, 4, 2, 2, 2, 2] # for 256 hop size and 22050 sample rate
   mult: 256

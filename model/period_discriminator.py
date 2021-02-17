@@ -41,6 +41,6 @@ class PeriodDiscriminator(nn.Module):
         y = y.unsqueeze(1)
         features = list()
         for module in self.discriminator:
-            out = module(y)
-            features.append(out)
+            y = module(y)
+            features.append(y)
         return features[-1], features[:-1]
