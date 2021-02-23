@@ -26,3 +26,9 @@ class ResStack(nn.Module):
 
     def remove_weight_norm(self):
         nn.utils.remove_weight_norm(self.shortcut)
+        nn.utils.remove_weight_norm(self.resstack[2])
+        nn.utils.remove_weight_norm(self.resstack[5])
+        nn.utils.remove_weight_norm(self.resstack[8])
+        nn.utils.remove_weight_norm(self.resstack[11])
+        nn.utils.remove_weight_norm(self.resstack[14])
+        nn.utils.remove_weight_norm(self.resstack[17])

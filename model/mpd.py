@@ -12,11 +12,12 @@ class MPD(nn.Module):
         self.mpd5 = PeriodDiscriminator(periods[4])
 
     def forward(self, x):
-        out1 = self.mpd1(x)
-        out2 = self.mpd2(x)
-        out3 = self.mpd3(x)
-        out4 = self.mpd4(x)
-        out5 = self.mpd5(x)
-        return out1, out2, out3, out4, out5
+        scores = list()
+        scores.append(self.mpd1(x))
+        scores.append(self.mpd2(x))
+        scores.append(self.mpd3(x))
+        scores.append(self.mpd4(x))
+        scores.append(self.mpd5(x))
+        return scores
 
 

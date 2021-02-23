@@ -14,3 +14,8 @@ class MRF(nn.Module):
       x2 = self.resblock2(x)
       x3 = self.resblock3(x)
       return x1 + x2 + x3
+
+    def remove_weight_norm(self):
+        self.resblock1.remove_weight_norm()
+        self.resblock2.remove_weight_norm()
+        self.resblock3.remove_weight_norm()
