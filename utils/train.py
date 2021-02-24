@@ -21,7 +21,7 @@ def num_params(model, print_out=True):
         print('Trainable Parameters: %.3fM' % parameters)
 
 def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, hp_str):
-    model_g = Generator(hp.audio.n_mel_channels).cuda()
+    model_g = Generator(hp.audio.n_mel_channels, hp.model.out_channels).cuda()
     model_d = MultiScaleDiscriminator(hp.model.num_D, hp.model.ndf, hp.model.n_layers,
                                       hp.model.downsampling_factor, hp.model.disc_out).cuda()
     model_d_mpd = MPD().cuda()
