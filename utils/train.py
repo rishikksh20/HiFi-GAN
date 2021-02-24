@@ -82,7 +82,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
         criterion = torch.nn.MSELoss().cuda()
         l1loss = torch.nn.L1Loss()
 
-        pqmf = PQMF(N=4, taps=62, cutoff=0.15, beta=9.0)
+        pqmf = PQMF(N=4, taps=62, cutoff=0.15, beta=9.0).cuda()
         for epoch in itertools.count(init_epoch + 1):
             if epoch % hp.log.validation_interval == 0:
                 with torch.no_grad():
