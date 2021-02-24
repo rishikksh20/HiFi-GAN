@@ -21,7 +21,7 @@ def num_params(model, print_out=True):
         print('Trainable Parameters: %.3fM' % parameters)
 
 def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, hp_str):
-    model_g = Generator(hp.audio.n_mel_channels, hp.model.out_channels).cuda()
+    model_g = Generator(hp.audio.n_mel_channels, hp.model.out_channels, hu=384, ku=[8, 8, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5]).cuda()
     model_d = MultiScaleDiscriminator(hp.model.num_D, hp.model.ndf, hp.model.n_layers,
                                       hp.model.downsampling_factor, hp.model.disc_out).cuda()
     model_d_mpd = MPD().cuda()
@@ -82,7 +82,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
         criterion = torch.nn.MSELoss().cuda()
         l1loss = torch.nn.L1Loss()
 
-        pqmf = PQMF()
+        pqmf = PQMF(N=4, taps=62, cutoff=0.15, beta=9.0)
         for epoch in itertools.count(init_epoch + 1):
             if epoch % hp.log.validation_interval == 0:
                 with torch.no_grad():
@@ -108,7 +108,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
 
                 if hp.model.out_channels > 1:
                     y_mb_ = fake_audio
-                    fake_audio = pqmf.synthesis(y_mb_)
+                    fake_audio = pqmf.synthesis(y_mb_)[:, :, :hp.audio.segment_length]
 
                 sc_loss, mag_loss = stft_loss(fake_audio[:, :, :audioG.size(2)].squeeze(1), audioG.squeeze(1))
                 loss_g += sc_loss + mag_loss # STFT Loss
@@ -164,6 +164,9 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                 loss_d_avg = 0.0
                 if step > hp.train.discriminator_train_start_steps:
                     fake_audio = model_g(melD)[:, :, :hp.audio.segment_length]
+                    if hp.model.out_channels > 1:
+                        y_mb_ = fake_audio
+                        fake_audio = pqmf.synthesis(y_mb_)[:, :, :hp.audio.segment_length]
                     fake_audio = fake_audio.detach()
                     loss_d_sum = 0.0
                     for _ in range(hp.train.rep_discriminator):
