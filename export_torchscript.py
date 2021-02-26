@@ -8,6 +8,9 @@ from model.generator import Generator
 import json
 from utils.hparams import HParam, load_hparam_str
 from denoiser import Denoiser
+from model.pqmf import PQMF
+from torch import nn
+
 
 MAX_WAV_VALUE = 32768.0
 
@@ -20,21 +23,32 @@ def load_checkpoint(filepath, device):
     return checkpoint_dict
 
 
+class Generator_torch_script(nn.Module):
+    def __init__(self, hp, args):
+        super(Generator_torch_script, self).__init__()
+        self.generator = Generator(hp.audio.n_mel_channels, hp.model.out_channels, hu=384, ku=[8, 8, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5])
+        self.pqmf = PQMF()
+        self.checkpoint = torch.load(args.checkpoint_path)
+
+    def forward(self, x):
+        self.generator.load_state_dict(self.checkpoint['model_g'])
+        self.generator.eval()
+        audioG = self.generator(x)
+        out = self.pqmf.synthesis(audioG)
+        return out
+
+
 def main(args):
-    checkpoint = torch.load(args.checkpoint_path)
+    #checkpoint = torch.load(args.checkpoint_path)
     if args.config is not None:
         hp = HParam(args.config)
     else:
         hp = load_hparam_str(checkpoint['hp_str'])
 
-    model = Generator(hp.audio.n_mel_channels, hp.model.out_channels, hu=384, ku=[8, 8, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5]).cuda()
+    model = Generator_torch_script(hp, args).cuda()
 
     #model = Generator(hp.audio.n_mel_channels).cuda()
-
-    model.load_state_dict(checkpoint['model_g'])
-    model.eval()
     #model.remove_weight_norm()
-
 
     with torch.no_grad():
         mel = torch.from_numpy(np.load(args.input))
