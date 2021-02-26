@@ -12,7 +12,7 @@ from .utils import get_commit_hash
 from utils.stft_loss import MultiResolutionSTFTLoss
 import numpy as np
 from utils.stft import TacotronSTFT
-
+from model.pqmf import PQMF
 
 def num_params(model, print_out=True):
     parameters = filter(lambda p: p.requires_grad, model.parameters())
@@ -21,7 +21,7 @@ def num_params(model, print_out=True):
         print('Trainable Parameters: %.3fM' % parameters)
 
 def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, hp_str):
-    model_g = Generator(hp.audio.n_mel_channels).cuda()
+    model_g = Generator(hp.audio.n_mel_channels, hp.model.out_channels, hu=384, ku=[8, 8, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5]).cuda()
     model_d = MultiScaleDiscriminator(hp.model.num_D, hp.model.ndf, hp.model.n_layers,
                                       hp.model.downsampling_factor, hp.model.disc_out).cuda()
     model_d_mpd = MPD().cuda()
@@ -76,15 +76,18 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
         model_g.train()
         model_d.train()
         stft_loss = MultiResolutionSTFTLoss()
+        sub_stft_loss = MultiResolutionSTFTLoss(hp.subband_stft_loss_params.fft_sizes,
+                                                hp.subband_stft_loss_params.hop_sizes,
+                                                hp.subband_stft_loss_params.win_lengths)
         criterion = torch.nn.MSELoss().cuda()
         l1loss = torch.nn.L1Loss()
 
-
+        pqmf = PQMF(N=4, taps=62, cutoff=0.15, beta=9.0).cuda()
         for epoch in itertools.count(init_epoch + 1):
             if epoch % hp.log.validation_interval == 0:
                 with torch.no_grad():
-                    validate(hp, model_g, model_d, model_d_mpd, valloader, stft_loss, l1loss, criterion, stft, writer,
-                             step)
+                    validate(hp, model_g, model_d, model_d_mpd, valloader, stft_loss, l1loss, sub_stft_loss, criterion,
+                             pqmf, stft, writer, step)
 
             trainloader.dataset.shuffle_mapping()
             loader = tqdm.tqdm(trainloader, desc='Loading train data')
@@ -103,10 +106,21 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
 
                 loss_g = 0.0
 
-
+                if hp.model.out_channels > 1:
+                    y_mb_ = fake_audio
+                    fake_audio = pqmf.synthesis(y_mb_)[:, :, :hp.audio.segment_length]
 
                 sc_loss, mag_loss = stft_loss(fake_audio[:, :, :audioG.size(2)].squeeze(1), audioG.squeeze(1))
                 loss_g += sc_loss + mag_loss # STFT Loss
+
+                if hp.model.use_subband_stft_loss:
+                    loss_g *= 0.5  # for balancing with subband stft loss
+                    y_mb = pqmf.analysis(audioG)
+                    y_mb = y_mb.view(-1, y_mb.size(2))  # (B, C, T) -> (B x C, T)
+                    y_mb_ = y_mb_.view(-1, y_mb_.size(2))  # (B, C, T) -> (B x C, T)
+                    sub_sc_loss, sub_mag_loss = sub_stft_loss(y_mb_[:, :y_mb.size(-1)], y_mb)  # y_mb --> [B*C, T]
+                    loss_g += 0.5 * (sub_sc_loss + sub_mag_loss)
+
 
                 adv_loss = 0.0
                 loss_mel = 0.0
@@ -130,9 +144,9 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                     adv_loss = adv_loss + adv_mpd_loss # Adv Loss
 
                     # Mel Loss
-                    mel_fake = stft.mel_spectrogram(fake_audio.squeeze(1))
-                    loss_mel += l1loss(melG[:, :, :mel_fake.size(2)], mel_fake.cuda()) # Mel L1 loss
-                    loss_g += hp.model.lambda_mel * loss_mel
+                    #mel_fake = stft.mel_spectrogram(fake_audio.squeeze(1))
+                    #loss_mel += l1loss(melG[:, :, :mel_fake.size(2)], mel_fake.cuda()) # Mel L1 loss
+                    #loss_g += hp.model.lambda_mel * loss_mel
 
                     if hp.model.feat_loss:
                         for (feats_fake, score_fake), (feats_real, _) in zip(disc_fake, disc_real):
@@ -150,6 +164,9 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                 loss_d_avg = 0.0
                 if step > hp.train.discriminator_train_start_steps:
                     fake_audio = model_g(melD)[:, :, :hp.audio.segment_length]
+                    if hp.model.out_channels > 1:
+                        y_mb_ = fake_audio
+                        fake_audio = pqmf.synthesis(y_mb_)[:, :, :hp.audio.segment_length]
                     fake_audio = fake_audio.detach()
                     loss_d_sum = 0.0
                     for _ in range(hp.train.rep_discriminator):

@@ -2,7 +2,8 @@ import tqdm
 import torch
 
 
-def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1loss, criterion, stft, writer, step):
+def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1loss, sub_stft_loss, criterion,  pqmf,
+             stft, writer, step):
     generator.eval()
     discriminator.eval()
     torch.backends.cudnn.benchmark = False
@@ -16,6 +17,9 @@ def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1
 
         # generator
         fake_audio = generator(mel) # B, 1, T' torch.Size([1, 1, 212992])
+        if hp.model.out_channels > 1:
+            y_mb_ = fake_audio
+            fake_audio = pqmf.synthesis(fake_audio)[:, :, :audio.size(2)]
         disc_fake = discriminator(fake_audio[:, :, :audio.size(2)]) # B, 1, T torch.Size([1, 1, 212893])
         disc_real = discriminator(audio)
 
@@ -27,11 +31,19 @@ def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1
         sc_loss, mag_loss = stft_loss(fake_audio[:, :, :audio.size(2)].squeeze(1), audio.squeeze(1))
         loss_g = sc_loss + mag_loss
 
+        if hp.model.use_subband_stft_loss:
+            loss_g *= 0.5  # for balancing with subband stft loss
+            y_mb = pqmf.analysis(audio)
+            y_mb = y_mb.view(-1, y_mb.size(2))  # (B, C, T) -> (B x C, T)
+            y_mb_ = y_mb_.view(-1, y_mb_.size(2))  # (B, C, T) -> (B x C, T)
+            sub_sc_loss, sub_mag_loss = sub_stft_loss(y_mb_[:, :y_mb.size(-1)], y_mb)
+            loss_g += 0.5 * (sub_sc_loss + sub_mag_loss)
+
         # Mel Loss
 
-        mel_fake = stft.mel_spectrogram(fake_audio[:, :, :audio.size(2)].squeeze(1))
-        loss_mel = l1loss(mel[:, :, :mel_fake.size(2)], mel_fake.cuda())
-        loss_g += hp.model.lambda_mel * loss_mel
+        #mel_fake = stft.mel_spectrogram(fake_audio[:, :, :audio.size(2)].squeeze(1))
+        #loss_mel = l1loss(mel[:, :, :mel_fake.size(2)], mel_fake.cuda())
+        #loss_g += hp.model.lambda_mel * loss_mel
 
 
         for (feats_fake, score_fake), (feats_real, score_real) in zip(disc_fake, disc_real):
@@ -72,8 +84,9 @@ def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1
 
     audio = audio[0][0].cpu().detach().numpy()
     fake_audio = fake_audio[0][0].cpu().detach().numpy()
+    loss_mel = 0.0
 
-    writer.log_validation(loss_g_avg, loss_d_avg, adv_loss, loss_mel.item(), loss_mpd.item(),\
+    writer.log_validation(loss_g_avg, loss_d_avg, adv_loss, loss_mel , loss_mpd.item(),\
                           generator, discriminator, audio, fake_audio, step)
 
     torch.backends.cudnn.benchmark = True
