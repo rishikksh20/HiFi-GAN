@@ -4,25 +4,32 @@ from model.mrf import MRF
  
 class Generator(nn.Module):
     
-    def __init__(self, input_channel=80, hu=512, ku=[16, 16, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5]):
+    def __init__(self, input_channel=80, cond_channel=1, hu=512, ku=[16, 16, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5]):
         super(Generator, self).__init__()
+        self.upsamples = ku
         self.input = nn.Sequential(
             nn.ReflectionPad1d(3),
             nn.utils.weight_norm(nn.Conv1d(input_channel, hu, kernel_size=7))
         )
 
-        generator = []
+        self.cond_input = nn.Sequential(
+            nn.ReflectionPad1d(3),
+            nn.utils.weight_norm(nn.Conv1d(cond_channel, hu, kernel_size=7))
+        )
+
+
+        self.cond_ups = nn.ModuleList()    
+        self.ups = nn.ModuleList()
+        self.resblocks = nn.ModuleList()
+      
         
         for k in ku:
             inp = hu
             out = int(inp/2)
-            generator += [
-                nn.LeakyReLU(0.2),
-                nn.utils.weight_norm(nn.ConvTranspose1d(inp, out, k, k//2)),
-                MRF(kr, out, Dr)
-            ]
+            cond_ups.append(nn.utils.weight_norm(nn.ConvTranspose1d(inp, out, k, k//2)))
+            ups.append(nn.utils.weight_norm(nn.ConvTranspose1d(inp, out, k, k//2)))
+            resblocks.append(MRF(kr, out, Dr))
             hu = out
-        self.generator = nn.Sequential(*generator)
 
         self.output = nn.Sequential(
             nn.LeakyReLU(0.2),
@@ -32,10 +39,20 @@ class Generator(nn.Module):
 
         )
     
-    def forward(self, x):
-        x1 = self.input(x)
-        x2 = self.generator(x1)
-        out = self.output(x2)
+    def forward(self, x, c):
+        x = self.input(x)
+        c = self.cond_input(c)
+        for i in range(self.upsamples):
+              c = F.leaky_relu(c, 0.2)
+              c = self.cond_ups[i](c)
+
+
+              x = F.leaky_relu(x, 0.2)
+              x = self.ups[i](x)
+
+              x = x + c
+              x = self.resblocks[i](x)
+        out = self.output(x)
         return out
 
     def eval(self, inference=False):
