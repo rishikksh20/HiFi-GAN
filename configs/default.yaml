@@ -1,20 +1,22 @@
 data: # root path of train/validation data (either relative/absoulte path is ok)
-  train: 'H:\Deepsync\backup\deepsync\LJSpeech-1.1\wavs'
-  validation: 'H:\Deepsync\backup\deepsync\LJSpeech-1.1\valid'
-  mel_path: 'H:\Deepsync\backup\fastspeech\data\mels'
+  train: '/FastSpeech2/wavs/'
+  validation: '/FastSpeech2/wavs/'
+  mel_path: '/FastSpeech2/preprocessed_testing/mels/'
+  conditional_path: '/FastSpeech2/preprocessed_testing/p_cwt_coef/'
   eval_path: ''
 ---
 train:
   rep_discriminator: 1
   discriminator_train_start_steps: 100000
   num_workers: 4
-  batch_size: 8
+  batch_size: 2
   optimizer: 'adam'
   adam:
     lr: 0.0002
     beta1: 0.8
     beta2: 0.99
     lr_decay: 0.999
+  cwt: True
 ---
 audio:
   n_mel_channels: 80
@@ -42,7 +44,7 @@ model:
   n_layers: 3
   downsampling_factor: 4
   disc_out: 512
-  
+
 stft_loss_params:
     fft_sizes: [1024, 2048, 512]  # List of FFT size for STFT-based loss.
     hop_sizes: [120, 240, 50]     # List of hop size for STFT-based loss

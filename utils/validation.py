@@ -10,12 +10,16 @@ def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1
     loader = tqdm.tqdm(valloader, desc='Validation loop')
     loss_g_sum = 0.0
     loss_d_sum = 0.0
-    for mel, audio in loader:
+    for mel, audio, c in loader:
         mel = mel.cuda()
         audio = audio.cuda()    # B, 1, T torch.Size([1, 1, 212893])
+        c = c.type(torch.cuda.FloatTensor)
+        c = c.T
+        #print(c.shape)
+
 
         # generator
-        fake_audio = generator(mel) # B, 1, T' torch.Size([1, 1, 212992])
+        fake_audio = generator(mel, c) # B, 1, T' torch.Size([1, 1, 212992])
         disc_fake = discriminator(fake_audio[:, :, :audio.size(2)]) # B, 1, T torch.Size([1, 1, 212893])
         disc_real = discriminator(audio)
 

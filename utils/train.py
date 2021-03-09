@@ -30,7 +30,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                                lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
     optim_d = torch.optim.AdamW(itertools.chain(model_d.parameters(), model_d_mpd.parameters()),
                                lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
-   
+
 
     stft = TacotronSTFT(filter_length=hp.audio.filter_length,
                         hop_length=hp.audio.hop_length,
@@ -91,15 +91,17 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
             avg_g_loss = []
             avg_d_loss = []
             avg_adv_loss = []
-            for (melG, audioG), (melD, audioD) in loader:
+            for (melG, audioG, cG), (melD, audioD, cD) in loader:
                 melG = melG.cuda()  # torch.Size([16, 80, 64])
                 audioG = audioG.cuda()  # torch.Size([16, 1, 16000])
                 melD = melD.cuda()  # torch.Size([16, 80, 64])
                 audioD = audioD.cuda()  # torch.Size([16, 1, 16000]
+                cG = cG.cuda().T
+                cD = cD.cuda().T
 
                 # generator
                 optim_g.zero_grad()
-                fake_audio = model_g(melG)[:, :, :hp.audio.segment_length]  # torch.Size([16, 1, 12800])
+                fake_audio = model_g(melG, cG)[:, :, :hp.audio.segment_length]  # torch.Size([16, 1, 12800])
 
                 loss_g = 0.0
 
@@ -165,7 +167,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                         loss_d_real = loss_d_real / len(disc_real)  # len(disc_real) = 3
                         loss_d_fake = loss_d_fake / len(disc_fake)  # len(disc_fake) = 3
                         loss_d += loss_d_real + loss_d_fake # MSD loss
-                   
+
                         loss_d_sum += loss_d
 
                         # MPD Adverserial loss

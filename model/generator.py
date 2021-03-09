@@ -1,9 +1,9 @@
 import torch
 from torch import nn
 from model.mrf import MRF
- 
+
 class Generator(nn.Module):
-    
+
     def __init__(self, input_channel=80, cond_channel=1, hu=512, ku=[16, 16, 4, 4], kr=[3, 7, 11], Dr=[1, 3, 5]):
         super(Generator, self).__init__()
         self.upsamples = ku
@@ -18,17 +18,17 @@ class Generator(nn.Module):
         )
 
 
-        self.cond_ups = nn.ModuleList()    
+        self.cond_ups = nn.ModuleList()
         self.ups = nn.ModuleList()
         self.resblocks = nn.ModuleList()
-      
-        
+
+
         for k in ku:
             inp = hu
             out = int(inp/2)
-            cond_ups.append(nn.utils.weight_norm(nn.ConvTranspose1d(inp, out, k, k//2)))
-            ups.append(nn.utils.weight_norm(nn.ConvTranspose1d(inp, out, k, k//2)))
-            resblocks.append(MRF(kr, out, Dr))
+            self.cond_ups.append(nn.utils.weight_norm(nn.ConvTranspose1d(inp, out, k, k//2)))
+            self.ups.append(nn.utils.weight_norm(nn.ConvTranspose1d(inp, out, k, k//2)))
+            self.resblocks.append(MRF(kr, out, Dr))
             hu = out
 
         self.output = nn.Sequential(
@@ -38,7 +38,7 @@ class Generator(nn.Module):
             nn.Tanh()
 
         )
-    
+
     def forward(self, x, c):
         x = self.input(x)
         c = self.cond_input(c)
