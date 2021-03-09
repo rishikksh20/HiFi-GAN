@@ -7,7 +7,7 @@ import numpy as np
 from utils.stft import TacotronSTFT
 from utils.hparams import HParam
 from utils.utils import read_wav_np
-
+from datasets.audio.pitch import Dio
 
 def main(hp, args):
     stft = TacotronSTFT(filter_length=hp.audio.filter_length,
@@ -18,11 +18,21 @@ def main(hp, args):
                         mel_fmin=hp.audio.mel_fmin,
                         mel_fmax=hp.audio.mel_fmax)
 
+    pitch = Dio(J=hp.train.cwt_bins)
     wav_files = glob.glob(os.path.join(args.data_path, '**', '*.wav'), recursive=True)
-    mel_path = hp.data.mel_path
+
+    mel_path = os.path.join(hp.data.data_path, "mels")
+    pitch_path = os.path.join(hp.data.data_path, "pitch")
+    pitch_avg_path = os.path.join(hp.data.data_path, "p_avg")
+    pitch_std_path = os.path.join(hp.data.data_path, "p_std")
+    pitch_cwt_coefs = os.path.join(hp.data.data_path, "p_cwt_coef")
 
     # Create all folders
     os.makedirs(mel_path, exist_ok=True)
+    os.makedirs(pitch_path, exist_ok=True)
+    os.makedirs(pitch_avg_path, exist_ok=True)
+    os.makedirs(pitch_std_path, exist_ok=True)
+    os.makedirs(pitch_cwt_coefs, exist_ok=True)
     for wavpath in tqdm.tqdm(wav_files, desc='preprocess wav to mel'):
         sr, wav = read_wav_np(wavpath)
         assert sr == hp.audio.sampling_rate, \
@@ -33,12 +43,19 @@ def main(hp, args):
             wav = np.pad(wav, (0, hp.audio.segment_length + hp.audio.pad_short - len(wav)), \
                     mode='constant', constant_values=0.0)
 
+        p, avg, std, p_coef = pitch.forward(torch.from_numpy(wav))  # shape in order - (T,) (no of utternace, ), (no of utternace, ), (10, T)
+
         wav = torch.from_numpy(wav).unsqueeze(0)
         mel = stft.mel_spectrogram(wav)  # mel [1, num_mel, T]
 
         mel = mel.squeeze(0)  # [num_mel, T]
         id = os.path.basename(wavpath).split(".")[0]
         np.save('{}/{}.npy'.format(mel_path, id), mel.numpy(), allow_pickle=False)
+
+        np.save("{}/{}.npy".format(pitch_path, id), p, allow_pickle=False)
+        np.save("{}/{}.npy".format(pitch_avg_path, id), avg, allow_pickle=False)
+        np.save("{}/{}.npy".format(pitch_std_path, id), std, allow_pickle=False)
+        np.save("{}/{}.npy".format(pitch_cwt_coefs, id), p_coef.reshape(-1, hp.cwt_bins), allow_pickle=False)
         #torch.save(mel, melpath)
 
 

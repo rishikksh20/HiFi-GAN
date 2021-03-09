@@ -151,7 +151,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                 # discriminator
                 loss_d_avg = 0.0
                 if step > hp.train.discriminator_train_start_steps:
-                    fake_audio = model_g(melD)[:, :, :hp.audio.segment_length]
+                    fake_audio = model_g(melD, cD)[:, :, :hp.audio.segment_length]
                     fake_audio = fake_audio.detach()
                     loss_d_sum = 0.0
                     for _ in range(hp.train.rep_discriminator):

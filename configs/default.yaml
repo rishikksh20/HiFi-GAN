@@ -1,13 +1,12 @@
 data: # root path of train/validation data (either relative/absoulte path is ok)
   train: '/FastSpeech2/wavs/'
   validation: '/FastSpeech2/wavs/'
-  mel_path: '/FastSpeech2/preprocessed_testing/mels/'
-  conditional_path: '/FastSpeech2/preprocessed_testing/p_cwt_coef/'
+  data_path: '/FastSpeech2/preprocessed_testing/'
   eval_path: ''
 ---
 train:
   rep_discriminator: 1
-  discriminator_train_start_steps: 100000
+  discriminator_train_start_steps: 1
   num_workers: 4
   batch_size: 2
   optimizer: 'adam'
@@ -17,6 +16,7 @@ train:
     beta2: 0.99
     lr_decay: 0.999
   cwt: True
+  cwt_bins: 256
 ---
 audio:
   n_mel_channels: 80

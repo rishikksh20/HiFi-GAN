@@ -50,9 +50,14 @@ class MelFromDisk(Dataset):
     def my_getitem(self, idx):
         wavpath = self.wav_list[idx]
         id = os.path.basename(wavpath).split(".")[0]
+        mel_path = os.path.join(self.hp.data.data_path, "mels")
+        mel_path = "{}/{}.npy".format(mel_path, id)
 
-        mel_path = "{}/{}.npy".format(self.hp.data.mel_path, id)
-        conditional_path = "{}/{}.npy".format(self.hp.data.conditional_path, id)
+        if self.hp.train.cwt:
+            conditional_path = os.path.join(self.hp.data.data_path, "p_cwt_coef")
+        else:
+            conditional_path = os.path.join(self.hp.data.data_path, "pitch")
+        conditional_path = "{}/{}.npy".format(conditional_path, id)
 
         sr, audio = read_wav_np(wavpath)
         if len(audio) < self.hp.audio.segment_length + self.hp.audio.pad_short:
