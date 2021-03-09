@@ -96,8 +96,11 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                 audioG = audioG.cuda()  # torch.Size([16, 1, 16000])
                 melD = melD.cuda()  # torch.Size([16, 80, 64])
                 audioD = audioD.cuda()  # torch.Size([16, 1, 16000]
-                cG = cG.cuda().T
-                cD = cD.cuda().T
+                cG = cG.cuda()          # torch.Size([16, 256, 64])
+                cD = cD.cuda()          # torch.Size([16, 256, 64])
+
+                cG = cG.type(torch.cuda.FloatTensor)
+                cD = cD.type(torch.cuda.FloatTensor)
 
                 # generator
                 optim_g.zero_grad()

@@ -129,3 +129,6 @@ dmypy.json
 .pyre/
 Untitled.ipynb
 *.DESKTOP-HL4FFVB
+
+data
+./data/

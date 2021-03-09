@@ -59,6 +59,7 @@ class MelFromDisk(Dataset):
             conditional_path = os.path.join(self.hp.data.data_path, "pitch")
         conditional_path = "{}/{}.npy".format(conditional_path, id)
 
+
         sr, audio = read_wav_np(wavpath)
         if len(audio) < self.hp.audio.segment_length + self.hp.audio.pad_short:
             audio = np.pad(audio, (0, self.hp.audio.segment_length + self.hp.audio.pad_short - len(audio)), \
@@ -69,19 +70,19 @@ class MelFromDisk(Dataset):
 
         mel = torch.from_numpy(np.load(mel_path))
         c = torch.from_numpy(np.load(conditional_path))
-
         if self.train:
             max_mel_start = mel.size(1) - self.mel_segment_length
             mel_start = random.randint(0, max_mel_start)
             mel_end = mel_start + self.mel_segment_length
             mel = mel[:, mel_start:mel_end]
             if self.hp.train.cwt:
-                c = c[:, mel_start:mel_end].T
+                #print("Shape of c :", c.shape)
+                c = c[mel_start:mel_end, :].T
             else:
                 c = c.unsqueeze(0)
                 c = c[:, mel_start:mel_end]
 
-
+            #print("C :", c.shape)
             audio_start = mel_start * self.hp.audio.hop_length
             audio = audio[:, audio_start:audio_start+self.hp.audio.segment_length]
 

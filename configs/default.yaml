@@ -1,14 +1,14 @@
 data: # root path of train/validation data (either relative/absoulte path is ok)
-  train: '/FastSpeech2/wavs/'
-  validation: '/FastSpeech2/wavs/'
-  data_path: '/FastSpeech2/preprocessed_testing/'
+  train: 'H:\Deepsync\backup\deepsync\LJSpeech-1.1\wavs\'
+  validation: 'H:\Deepsync\backup\deepsync\LJSpeech-1.1\valid\'
+  data_path: './data/'
   eval_path: ''
 ---
 train:
   rep_discriminator: 1
   discriminator_train_start_steps: 1
   num_workers: 4
-  batch_size: 2
+  batch_size: 16
   optimizer: 'adam'
   adam:
     lr: 0.0002
