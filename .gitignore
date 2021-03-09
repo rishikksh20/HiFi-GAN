@@ -132,3 +132,5 @@ Untitled.ipynb
 
 data
 ./data/
+logs
+chkpt

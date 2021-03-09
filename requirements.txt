@@ -8,3 +8,6 @@ tqdm
 pillow
 pyyaml
 torchaudio
+pyworld==0.2.10
+pycwt
+typeguard==2.9.1
