@@ -19,7 +19,7 @@ def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1
         fake_audio = generator(mel) # B, 1, T' torch.Size([1, 1, 212992])
         if hp.model.out_channels > 1:
             y_mb_ = fake_audio
-            fake_audio = pqmf.synthesis(fake_audio)[:, :, :audio.size(2)]
+            fake_audio = pqmf.synthesis(y_mb_)[:, :, :audio.size(2)]
         disc_fake = discriminator(fake_audio[:, :, :audio.size(2)]) # B, 1, T torch.Size([1, 1, 212893])
         disc_real = discriminator(audio)
 
