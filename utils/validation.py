@@ -2,7 +2,8 @@ import tqdm
 import torch
 
 
-def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1loss, criterion, stft, writer, step):
+def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1loss, sub_stft_loss, criterion,  pqmf,
+             stft, writer, step):
     generator.eval()
     discriminator.eval()
     torch.backends.cudnn.benchmark = False
@@ -21,6 +22,9 @@ def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1
         # generator
 
         fake_audio = generator(mel, c) # B, 1, T' torch.Size([1, 1, 212992])
+        if hp.model.out_channels > 1:
+            y_mb_ = fake_audio
+            fake_audio = pqmf.synthesis(fake_audio)[:, :, :audio.size(2)]
         disc_fake = discriminator(fake_audio[:, :, :audio.size(2)]) # B, 1, T torch.Size([1, 1, 212893])
         disc_real = discriminator(audio)
 
@@ -31,6 +35,14 @@ def validate(hp, generator, discriminator, model_d_mpd, valloader, stft_loss, l1
         loss_mpd_fake = 0.0
         sc_loss, mag_loss = stft_loss(fake_audio[:, :, :audio.size(2)].squeeze(1), audio.squeeze(1))
         loss_g = sc_loss + mag_loss
+
+        if hp.model.use_subband_stft_loss:
+            loss_g *= 0.5  # for balancing with subband stft loss
+            y_mb = pqmf.analysis(audio)
+            y_mb = y_mb.view(-1, y_mb.size(2))  # (B, C, T) -> (B x C, T)
+            y_mb_ = y_mb_.view(-1, y_mb_.size(2))  # (B, C, T) -> (B x C, T)
+            sub_sc_loss, sub_mag_loss = sub_stft_loss(y_mb_[:, :y_mb.size(-1)], y_mb)
+            loss_g += 0.5 * (sub_sc_loss + sub_mag_loss)
 
         # Mel Loss
 
