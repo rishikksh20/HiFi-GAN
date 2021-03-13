@@ -18,14 +18,19 @@ def create_dataloader(hp, args, train):
         return DataLoader(dataset=dataset, batch_size=1, shuffle=False,
             num_workers=0, pin_memory=False, drop_last=False)
 
+def get_dataset_filelist(file, wav_dir):
+    with open(file, 'r', encoding='utf-8') as fi:
+        training_files = [os.path.join(wav_dir, x.split('|')[0])
+                          for x in fi.read().split('\n') if len(x) > 0]
+    return training_files
 
 class MelFromDisk(Dataset):
     def __init__(self, hp, args, train):
         self.hp = hp
         self.args = args
         self.train = train
-        self.path = hp.data.train if train else hp.data.validation
-        self.wav_list = glob.glob(os.path.join(self.path, '**', '*.wav'), recursive=True)
+        self.path = hp.data.train if train else hp.data.valid
+        self.wav_list = get_dataset_filelist(self.path, hp.data.wav_dir)
         #print("Wavs path :", self.path)
         #print(self.hp.data.mel_path)
         #print("Length of wavelist :", len(self.wav_list))

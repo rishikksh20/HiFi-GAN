@@ -1,8 +1,9 @@
 data: # root path of train/validation data (either relative/absoulte path is ok)
-  train: 'H:\Deepsync\backup\deepsync\LJSpeech-1.1\wavs\'
-  validation: 'H:\Deepsync\backup\deepsync\LJSpeech-1.1\valid\'
+  wav_dir: '../LJSpeech-1.1/wavs/'
   data_path: './data/'
   eval_path: ''
+  train: './filelists/train.txt'
+  valid: './filelists/valid.txt'
 ---
 train:
   rep_discriminator: 1
