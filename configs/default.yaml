@@ -58,8 +58,8 @@ subband_stft_loss_params:
   window: "hann_window"       # Window function for STFT-based loss
 ---
 log:
-  summary_interval: 1
+  summary_interval: 50
   validation_interval: 5
-  save_interval: 20
+  save_interval: 5000
   chkpt_dir: 'chkpt'
   log_dir: 'logs'

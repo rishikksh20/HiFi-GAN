@@ -209,21 +209,21 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                                                                      sum(avg_d_loss) / len(avg_d_loss),
                                                                      sum(avg_adv_loss) / len(avg_adv_loss),
                                                                      step))
-            if epoch % hp.log.save_interval == 0:
-                save_path = os.path.join(pt_dir, '%s_%s_%04d.pt'
-                                         % (args.name, githash, epoch))
-                torch.save({
-                    'model_g': model_g.state_dict(),
-                    'model_d': model_d.state_dict(),
-                    'model_d_mpd': model_d_mpd.state_dict(),
-                    'optim_g': optim_g.state_dict(),
-                    'optim_d': optim_d.state_dict(),
-                    'step': step,
-                    'epoch': epoch,
-                    'hp_str': hp_str,
-                    'githash': githash,
-                }, save_path)
-                logger.info("Saved checkpoint to: %s" % save_path)
+                if step % hp.log.save_interval == 0:
+                    save_path = os.path.join(pt_dir, '%s_%s_%04d.pt'
+                                             % (args.name, githash, step))
+                    torch.save({
+                        'model_g': model_g.state_dict(),
+                        'model_d': model_d.state_dict(),
+                        'model_d_mpd': model_d_mpd.state_dict(),
+                        'optim_g': optim_g.state_dict(),
+                        'optim_d': optim_d.state_dict(),
+                        'step': step,
+                        'epoch': epoch,
+                        'hp_str': hp_str,
+                        'githash': githash,
+                    }, save_path)
+                    logger.info("Saved checkpoint to: %s" % save_path)
 
             scheduler_g.step()
             scheduler_d.step()
