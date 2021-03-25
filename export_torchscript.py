@@ -1,16 +1,13 @@
+
 from __future__ import absolute_import, division, print_function, unicode_literals
-import os
+
 import torch
 import argparse
 from scipy.io.wavfile import write
 import numpy as np
 from model.generator import Generator
-import json
 from utils.hparams import HParam, load_hparam_str
-from denoiser import Denoiser
-
-MAX_WAV_VALUE = 32768.0
-
+import os
 
 def load_checkpoint(filepath, device):
     assert os.path.isfile(filepath)
@@ -19,32 +16,35 @@ def load_checkpoint(filepath, device):
     print("Complete.")
     return checkpoint_dict
 
+MAX_WAV_VALUE = 32768.0
 
 def main(args):
-    checkpoint = torch.load(args.checkpoint_path)
     if args.config is not None:
-        hp = HParam(args.config)
+        h = HParam(args.config)
     else:
-        hp = load_hparam_str(checkpoint['hp_str'])
+        h = load_hparam_str(checkpoint['hp_str'])
 
-    model = Generator(hp.audio.n_mel_channels).cuda()
 
-    model.load_state_dict(checkpoint['model_g'])
+    model = Generator(80).cuda()
+    state_dict_g = load_checkpoint(args.checkpoint_path, 'cuda')
+    model.load_state_dict(state_dict_g['model_g'])
+
     model.eval()
-    #model.remove_weight_norm()
-
-
+    
     with torch.no_grad():
         mel = torch.from_numpy(np.load(args.input))
+        c = torch.from_numpy(np.load(args.input1).T)
+        c = c.unsqueeze(0).cuda()
+        c = c.type(torch.FloatTensor).cuda()
         if len(mel.shape) == 2:
             mel = mel.unsqueeze(0)
         mel = mel.cuda()
-        zero = torch.full((1, 80, 10), -11.5129).to(mel.device)
-        c = torch.zeros((256, mel.shape[2])).unsqueeze(0).cuda()
-        print(c.shape)
-        mel = torch.cat((mel, zero), dim=2)
+
+        #print(mel.shape, c.shape)
+        #zero = torch.full((1, 80, 10), -11.5129).to(mel.device)
+        #mel = torch.cat((mel, zero), dim=2)
         hifigan_trace = torch.jit.trace(model, (mel, c))
-        #print(state_dict_g.keys())
+        print(state_dict_g.keys())
         hifigan_trace.save("{}/hifigan_{}.pt".format(args.out, args.name))
 
 
@@ -56,6 +56,8 @@ if __name__ == '__main__':
                         help="path of checkpoint pt file for evaluation")
     parser.add_argument('-i', '--input', type=str, required=True,
                         help="directory of mel-spectrograms to invert into raw audio. ")
+    parser.add_argument('-i1', '--input1', type=str, required=True,
+                        help="Input pitch for inference")
     parser.add_argument('-o', '--out', type=str, required=True,
                         help="path of output pt file")
     parser.add_argument('-n', '--name', type=str, required=True,
