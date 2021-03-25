@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     assert hp.audio.hop_length == 256, \
         'hp.audio.hop_length must be equal to 256, got %d' % hp.audio.hop_length
-    assert hp.data.train != '' and hp.data.validation != '', \
+    assert hp.data.train != '' and hp.data.valid != '', \
         'hp.data.train and hp.data.validation can\'t be empty: please fix %s' % args.config
 
     trainloader = create_dataloader(hp, args, True)
