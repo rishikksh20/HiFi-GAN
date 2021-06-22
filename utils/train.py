@@ -103,8 +103,6 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
 
                 loss_g = 0.0
 
-
-
                 sc_loss, mag_loss = stft_loss(fake_audio[:, :, :audioG.size(2)].squeeze(1), audioG.squeeze(1))
                 loss_g += sc_loss + mag_loss # STFT Loss
 
@@ -131,7 +129,7 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                     adv_loss = adv_loss + adv_mpd_loss # Adv Loss
 
                     # Mel Loss
-                    mel_fake = stft.mel_spectrogram(fake_audio.squeeze(1))
+                    mel_fake = stft.mel_spectrogram(fake_audio.squeeze(1), requires_grad=True)
                     loss_mel += l1loss(melG[:, :, :mel_fake.size(2)], mel_fake.cuda()) # Mel L1 loss
                     loss_g += hp.model.lambda_mel * loss_mel
 
@@ -143,9 +141,6 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                         for feats_fake, feats_real in zip(mpd_fake_feats, mpd_real_feats):
                             for feat_f, feat_r in zip(feats_fake, feats_real):
                                 adv_loss += hp.model.feat_match * torch.mean(torch.abs(feat_f - feat_r))
-
-
-
 
                     loss_g += hp.model.lambda_adv * adv_loss
 
@@ -185,7 +180,6 @@ def train(args, pt_dir, chkpt_path, trainloader, valloader, writer, logger, hp, 
                         loss_d.backward()
                         optim_d.step()
                         loss_d_sum += loss_mpd
-
 
                     loss_d_avg = loss_d_sum / hp.train.rep_discriminator
                     loss_d_avg = loss_d_avg.item()
