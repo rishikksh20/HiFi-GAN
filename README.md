@@ -9,6 +9,11 @@ Unofficial PyTorch implementation of [HiFi-GAN: Generative Adversarial Networks 
 <br>
 
 ![](./assets/fig3.JPG)
+
+
+## Note
+* For more complete and end to end Voice cloning or Text to Speech (TTS) toolbox 🧰 please visit [Deepsync Technologies](https://deepsync.co/).
+* 
 ## Prerequisites
 
 Tested on Python 3.6
